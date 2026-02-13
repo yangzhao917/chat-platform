@@ -226,15 +226,14 @@ chat-platform/
 CREATE TABLE `characters` (
   `id` VARCHAR(36) PRIMARY KEY COMMENT '主键UUID',
   `name` VARCHAR(100) NOT NULL COMMENT '角色名称',
-  `avatar_url` VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
+  `avatarUrl` VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
   `description` VARCHAR(500) NOT NULL COMMENT '角色简介',
-  `background_story` TEXT NOT NULL COMMENT '背景故事',
-  `system_prompt` TEXT NOT NULL COMMENT 'AI系统提示词',
+  `backgroundStory` TEXT NOT NULL COMMENT '背景故事',
+  `systemPrompt` TEXT NOT NULL COMMENT 'AI系统提示词',
   `metadata` JSON DEFAULT NULL COMMENT '扩展字段',
-  `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY `idx_characters_created_at` (`created_at`)
+  `isActive` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
@@ -243,19 +242,21 @@ CREATE TABLE `characters` (
 ```sql
 CREATE TABLE `messages` (
   `id` VARCHAR(36) PRIMARY KEY COMMENT '主键UUID',
-  `character_id` VARCHAR(36) NOT NULL COMMENT '关联角色ID',
+  `userId` VARCHAR(64) NOT NULL DEFAULT 'anonymous' COMMENT '用户ID（设备ID）',
+  `characterId` VARCHAR(36) NOT NULL COMMENT '关联角色ID',
   `role` VARCHAR(20) NOT NULL COMMENT '消息角色: user/assistant',
   `content` TEXT NOT NULL COMMENT '消息内容',
-  `metadata` JSON DEFAULT NULL COMMENT '扩展字段',
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  KEY `idx_messages_character_id_created_at` (`character_id`, `created_at`)
+  `metadata` JSON DEFAULT NULL COMMENT '扩展字段（如图片URL）',
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  KEY `idx_messages_user_character` (`userId`, `characterId`, `createdAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 **简化说明**：
 - 删除了conversations表，messages直接关联角色（单对话模式）
-- 每个角色只保留一个对话，通过character_id关联
+- 每个用户（通过deviceId识别）与每个角色只保留一个对话
 - 支持"清空对话"功能重新开始
+- metadata字段存储扩展信息（如图片URL）
 
 ## 📚 API文档
 
@@ -274,6 +275,18 @@ DELETE /api/characters/:id          # 删除角色（级联删除消息）
 POST   /api/chat/stream             # 发送消息并流式接收AI回复（SSE）
 GET    /api/chat/history/:characterId  # 获取角色的聊天历史
 DELETE /api/chat/history/:characterId  # 清空角色的聊天历史
+```
+
+### 文件上传接口
+
+```
+POST   /api/upload/image            # 上传图片（用于识图功能）
+```
+
+### 配置接口
+
+```
+GET    /api/config/available-models # 获取当前可用的AI模型列表
 ```
 
 ### SSE事件格式
@@ -319,7 +332,7 @@ BASE_URL=http://localhost:3000
 
 ## 📝 开发日志
 
-- 2026-02-14: 更新文档，完善技术栈和配置说明
+- 2026-02-14: 更新README文档，修正数据库表结构（使用camelCase命名），补充文件上传和配置API接口
 - 2026-02-13: 项目初始化，创建文档
 
 ## 📄 许可证
