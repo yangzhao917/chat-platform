@@ -1,0 +1,40 @@
+{
+  "name": "chat-platform-frontend",
+  "version": "1.0.0",
+  "description": "角色扮演AI对话平台 - 前端应用",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@fingerprintjs/fingerprintjs": "^5.0.1",
+    "@vueuse/core": "^10.7.1",
+    "axios": "^1.6.5",
+    "browser-image-compression": "^2.0.2",
+    "element-plus": "^2.5.3",
+    "highlight.js": "^11.11.1",
+    "marked": "^17.0.2",
+    "marked-highlight": "^2.2.3",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.15",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@types/marked": "^5.0.2",
+    "@vitejs/plugin-vue": "^5.0.3",
+    "@vue/eslint-config-typescript": "^12.0.0",
+    "@vue/tsconfig": "^0.5.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-vue": "^9.19.2",
+    "typescript": "^5.9.3",
+    "vite": "^5.0.11",
+    "vue-tsc": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

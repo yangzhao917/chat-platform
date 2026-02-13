@@ -1,0 +1,1 @@
+[{"text": "# 依赖\nnode_modules/\n\n# 构建产物\ndist/\nbuild/\n\n# 环境变量\n.env\n.env.local\n.env.*.local\n\n# 日志\n*.log\nnpm-debug.log*\nyarn-debug.log*\nyarn-error.log*\n\n# IDE\n.vscode/\n.idea/\n*.swp\n*.swo\n*.suo\n*.ntvs*\n*.njsproj\n*.sln\n*.sw?\n\n# OS\n.DS_Store\nThumbs.db\n\n# 测试覆盖率\ncoverage/\n.nyc_output/\n", "type": "text"}]
