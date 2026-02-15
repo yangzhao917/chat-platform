@@ -7,6 +7,12 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // 启用CORS（必须在静态文件服务之前）
+  app.enableCors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+  });
+
   // 配置静态文件访问
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/',
@@ -20,12 +26,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
-  // 启用CORS
-  app.enableCors({
-    origin: 'http://localhost:5173',
-    credentials: true,
-  });
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

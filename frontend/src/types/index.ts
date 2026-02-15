@@ -14,10 +14,34 @@ export interface Character {
 export interface Message {
   id: string;
   characterId: string;
+  conversationId?: string;
   role: 'user' | 'assistant';
   content: string;
   metadata: MessageMetadata | null;
   createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  characterId: string;
+  characterName?: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  userId: string;
+  name: string | null;
+  avatarUrl: string | null;
+  occupation: string | null;
+  hobbies: string[] | null;
+  bio: string | null;
+  defaultModeId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateCharacterDto {
@@ -30,6 +54,7 @@ export interface CreateCharacterDto {
 export interface SendMessageDto {
   characterId: string;
   content: string;
+  conversationId?: string;
 }
 
 // 消息渲染类型

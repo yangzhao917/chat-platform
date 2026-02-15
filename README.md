@@ -4,16 +4,26 @@
 
 这是一个基于AI的角色扮演对话平台，用户可以创建虚拟角色并与之进行沉浸式对话。
 
-### 核心功能（MVP简化版）
+### 界面预览
+
+![界面预览1](./img/image1.png)
+
+![界面预览2](./img/image2.png)
+
+### 核心功能
 
 - ✅ 角色创建（简化4字段表单）
 - ✅ 文本对话（流式回复）
 - ✅ 图片识图（支持发送图片给AI分析）
-- ✅ 单对话模式（每个角色只有一个对话）
-- ✅ 清空对话（重新开始）
-- ✅ 角色删除
+- ✅ 多对话管理（每个角色支持多个独立对话）
+- ✅ 对话列表（时间分组：今天/昨天/更早）
+- ✅ 对话搜索（按标题和角色名搜索）
+- ✅ 批量删除对话
+- ✅ 角色删除（级联删除所有对话和消息）
 - ✅ 预设角色（5个示例角色）
 - ✅ 多模型支持（StepFun、OpenAI GPT-4o/GPT-4 Vision、DeepSeek）
+- ✅ 用户配置（昵称、头像、职业、爱好、简介）
+- ✅ 个性化回复风格（默认模式配置）
 
 ## 🚀 快速开始
 
@@ -89,10 +99,14 @@ graph TB
         A[Vue 3 应用]
         A1[角色管理页面]
         A2[对话页面]
-        A3[Pinia 状态管理]
+        A3[侧边栏-对话列表]
+        A4[设置对话框]
+        A5[Pinia 状态管理]
         A --> A1
         A --> A2
         A --> A3
+        A --> A4
+        A --> A5
     end
 
     subgraph "后端层"
@@ -102,19 +116,27 @@ graph TB
         B3[Chat Module]
         B4[AI Module]
         B5[Upload Module]
+        B6[Conversation Module]
+        B7[UserProfile Module]
         B --> B1
         B --> B2
         B --> B3
         B --> B4
         B --> B5
+        B --> B6
+        B --> B7
     end
 
     subgraph "数据层"
-        C[(MySQL 数据库)]
+        C[MySQL 数据库]
         C1[characters 表]
         C2[messages 表]
+        C3[conversations 表]
+        C4[user_profiles 表]
         C --> C1
         C --> C2
+        C --> C3
+        C --> C4
     end
 
     subgraph "外部服务"
@@ -128,25 +150,26 @@ graph TB
     end
 
     A -->|HTTP/SSE| B
-    B1 -->|TypeORM| C
-    B2 -->|TypeORM| C
-    B4 -->|HTTP| D
-    B3 -->|调用| B4
-    B3 -->|SSE 流式| A
+    B -->|TypeORM| C
+    B -->|HTTP| D
 ```
 
 #### 后端模块关系
 
 ```mermaid
 graph LR
-    A[Character Module] -->|角色信息| C[Chat Module]
-    B[Message Module] -->|历史消息| C
-    C -->|AI 请求| D[AI Module]
-    E[Upload Module] -->|图片 URL| C
-    C -->|保存消息| B
+    A[Character Module] -->|角色信息| E[Chat Module]
+    B[Message Module] -->|历史消息| E
+    C[Conversation Module] -->|对话管理| E
+    D[UserProfile Module] -->|用户配置| E
+    E -->|AI 请求| F[AI Module]
+    G[Upload Module] -->|图片/头像 URL| E
+    G -->|头像上传| D
+    E -->|保存消息| B
+    E -->|创建/更新对话| C
 
-    style C fill:#f9f,stroke:#333,stroke-width:2px
-    style D fill:#bbf,stroke:#333,stroke-width:2px
+    style E fill:#f9f,stroke:#333,stroke-width:2px
+    style F fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
 #### 对话流程
@@ -200,16 +223,31 @@ chat-platform/
 │   │   │   ├── chat/        # 聊天模块（SSE）
 │   │   │   ├── ai/          # AI服务模块
 │   │   │   ├── config/      # 配置模块
-│   │   │   └── upload/      # 文件上传模块
+│   │   │   ├── upload/      # 文件上传模块
+│   │   │   ├── conversation/   # 对话管理模块
+│   │   │   └── user-profile/   # 用户配置模块
 │   │   └── main.ts
 │   └── package.json
 │
 └── frontend/             # 前端应用
     ├── src/
     │   ├── views/        # 页面组件
+    │   │   ├── ChatLayout.vue      # 聊天布局
+    │   │   └── ChatPage.vue        # 对话页面
     │   ├── components/   # 可复用组件
+    │   │   ├── Sidebar.vue              # 侧边栏（对话列表+搜索）
+    │   │   ├── ConversationList.vue     # 对话列表（时间分组）
+    │   │   ├── SettingsDialog.vue       # 设置对话框
+    │   │   ├── AboutYouPanel.vue        # 关于你面板
+    │   │   ├── PersonalConfigPanel.vue  # 个性化配置面板
+    │   │   └── MessageCard.vue          # 消息卡片
     │   ├── api/          # API调用
     │   ├── stores/       # 状态管理
+    │   │   ├── character.ts      # 角色状态
+    │   │   ├── chat.ts           # 聊天状态
+    │   │   ├── conversation.ts   # 对话状态
+    │   │   ├── userProfile.ts    # 用户配置状态
+    │   │   └── device.ts         # 设备ID状态
     │   ├── router/       # 路由配置
     │   ├── types/        # 类型定义
     │   └── utils/        # 工具函数
@@ -244,19 +282,58 @@ CREATE TABLE `messages` (
   `id` VARCHAR(36) PRIMARY KEY COMMENT '主键UUID',
   `userId` VARCHAR(64) NOT NULL DEFAULT 'anonymous' COMMENT '用户ID（设备ID）',
   `characterId` VARCHAR(36) NOT NULL COMMENT '关联角色ID',
+  `conversationId` VARCHAR(36) NOT NULL DEFAULT 'default' COMMENT '关联对话ID',
   `role` VARCHAR(20) NOT NULL COMMENT '消息角色: user/assistant',
   `content` TEXT NOT NULL COMMENT '消息内容',
-  `metadata` JSON DEFAULT NULL COMMENT '扩展字段（如图片URL）',
+  `metadata` JSON DEFAULT NULL COMMENT '扩展字段（如图片URL、卡片数据）',
   `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  KEY `idx_messages_user_character` (`userId`, `characterId`, `createdAt`)
+  KEY `idx_messages_user_character` (`userId`, `characterId`, `createdAt`),
+  KEY `idx_messages_conversation` (`conversationId`, `createdAt`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
-**简化说明**：
-- 删除了conversations表，messages直接关联角色（单对话模式）
-- 每个用户（通过deviceId识别）与每个角色只保留一个对话
-- 支持"清空对话"功能重新开始
-- metadata字段存储扩展信息（如图片URL）
+#### conversations（对话表）
+
+```sql
+CREATE TABLE `conversations` (
+  `id` VARCHAR(36) PRIMARY KEY COMMENT '主键UUID',
+  `userId` VARCHAR(64) NOT NULL COMMENT '用户ID（设备ID）',
+  `characterId` VARCHAR(36) NOT NULL COMMENT '关联角色ID',
+  `title` VARCHAR(200) NOT NULL COMMENT '对话标题',
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  KEY `idx_conversations_user_character` (`userId`, `characterId`, `createdAt`),
+  KEY `idx_conversations_user_updated` (`userId`, `updatedAt`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**说明**：
+- 支持每个角色创建多个独立对话
+- title自动生成（截取首条消息前20字）或用户自定义
+- updatedAt用于对话列表排序
+
+#### user_profiles（用户配置表）
+
+```sql
+CREATE TABLE `user_profiles` (
+  `id` VARCHAR(36) PRIMARY KEY COMMENT '主键UUID',
+  `userId` VARCHAR(64) NOT NULL UNIQUE COMMENT '用户ID（设备ID）',
+  `name` VARCHAR(100) DEFAULT NULL COMMENT '用户昵称',
+  `avatarUrl` VARCHAR(500) DEFAULT NULL COMMENT '用户头像URL',
+  `occupation` VARCHAR(100) DEFAULT NULL COMMENT '职业',
+  `hobbies` JSON DEFAULT NULL COMMENT '爱好列表',
+  `bio` VARCHAR(500) DEFAULT NULL COMMENT '个人简介',
+  `defaultModeId` VARCHAR(36) DEFAULT NULL COMMENT '默认回复风格（预设模式ID）',
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  KEY `idx_user_profiles_user` (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+**说明**：
+- 存储用户个人信息，用于AI个性化回复
+- hobbies存储为JSON数组
+- defaultModeId关联预设角色ID
 
 ## 📚 API文档
 
@@ -273,8 +350,35 @@ DELETE /api/characters/:id          # 删除角色（级联删除消息）
 
 ```
 POST   /api/chat/stream             # 发送消息并流式接收AI回复（SSE）
+       # Body: { characterId, content, conversationId?, imageUrl? }
 GET    /api/chat/history/:characterId  # 获取角色的聊天历史
+       # Query: conversationId (可选)
 DELETE /api/chat/history/:characterId  # 清空角色的聊天历史
+       # Query: conversationId (可选)
+```
+
+### 对话管理接口
+
+```
+GET    /api/conversations           # 获取对话列表
+       # Query: characterId (可选), period (today/yesterday/week/all)
+POST   /api/conversations           # 创建新对话
+       # Body: { characterId, title? }
+GET    /api/conversations/:id       # 获取对话详情
+PATCH  /api/conversations/:id/title # 更新对话标题
+       # Body: { title }
+DELETE /api/conversations/:id       # 删除对话（级联删除消息）
+GET    /api/conversations/:id/messages  # 获取对话的所有消息
+```
+
+### 用户配置接口
+
+```
+GET    /api/user-profile            # 获取用户配置
+POST   /api/user-profile            # 创建/更新用户配置
+       # Body: { name?, avatarUrl?, occupation?, hobbies?, bio?, defaultModeId? }
+POST   /api/user-profile/avatar     # 上传用户头像
+       # FormData: file (图片文件)
 ```
 
 ### 文件上传接口
@@ -332,6 +436,14 @@ BASE_URL=http://localhost:3000
 
 ## 📝 开发日志
 
+- 2026-02-15: 完成多对话管理系统升级
+  - 新增conversations表和user_profiles表
+  - 实现对话列表（时间分组：今天/昨天/更早）
+  - 实现对话搜索和批量删除功能
+  - 新增用户配置功能（昵称、头像、职业、爱好、简介）
+  - 新增个性化回复风格配置
+  - 前端新增Sidebar、ConversationList、SettingsDialog等组件
+  - 后端新增Conversation Module和UserProfile Module
 - 2026-02-14: 更新README文档，修正数据库表结构（使用camelCase命名），补充文件上传和配置API接口
 - 2026-02-13: 项目初始化，创建文档
 

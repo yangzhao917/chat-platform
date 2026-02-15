@@ -11,6 +11,10 @@ export class SendMessageDto {
 
   @IsOptional()
   @IsString()
+  conversationId?: string;
+
+  @IsOptional()
+  @IsString()
   imageUrl?: string;
 
   @IsOptional()

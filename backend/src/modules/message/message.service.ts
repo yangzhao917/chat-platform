@@ -12,9 +12,13 @@ export class MessageService {
     private messageRepository: Repository<Message>,
   ) {}
 
-  async getHistory(userId: string, characterId: string): Promise<Message[]> {
+  async getHistory(
+    userId: string,
+    characterId: string,
+    conversationId: string = 'default',
+  ): Promise<Message[]> {
     const messages = await this.messageRepository.find({
-      where: { userId, characterId },
+      where: { userId, characterId, conversationId },
       order: { createdAt: 'DESC' },
       take: HISTORY_LIMIT,
     });
@@ -27,6 +31,7 @@ export class MessageService {
     role: 'user' | 'assistant',
     content: string,
     metadata?: Record<string, any> | null,
+    conversationId?: string,
   ): Promise<Message> {
     const message = this.messageRepository.create({
       userId,
@@ -34,11 +39,16 @@ export class MessageService {
       role,
       content,
       metadata,
+      conversationId: conversationId || 'default',
     });
     return this.messageRepository.save(message);
   }
 
-  async clearHistory(userId: string, characterId: string): Promise<void> {
-    await this.messageRepository.delete({ userId, characterId });
+  async clearHistory(
+    userId: string,
+    characterId: string,
+    conversationId: string = 'default',
+  ): Promise<void> {
+    await this.messageRepository.delete({ userId, characterId, conversationId });
   }
 }

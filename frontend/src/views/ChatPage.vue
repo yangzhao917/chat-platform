@@ -1,53 +1,13 @@
 <template>
   <div class="chat-page">
     <el-container style="height: 100%">
-      <!-- 左侧角色列表 -->
-      <el-aside width="280px" class="sidebar">
-        <div class="aside-header">
-          <el-button type="primary" size="large" class="create-btn" @click="showCreateDialog = true">
-            <el-icon style="margin-right: 8px"><Plus /></el-icon>
-            创建角色
-          </el-button>
-        </div>
-        <el-scrollbar height="calc(100% - 90px)">
-          <div class="character-list">
-            <div
-              v-for="char in characterStore.characters"
-              :key="char.id"
-              class="character-item"
-              :class="{ active: currentCharacterId === char.id }"
-              @click="selectCharacter(char.id)"
-            >
-              <div class="character-info">
-                <div class="character-name">{{ char.name }}</div>
-                <div class="character-desc">{{ char.description }}</div>
-              </div>
-              <el-button
-                v-if="!char.metadata?.isPreset"
-                type="danger"
-                size="small"
-                text
-                circle
-                @click.stop="deleteCharacter(char.id)"
-              >
-                <el-icon><Delete /></el-icon>
-              </el-button>
-            </div>
-          </div>
-        </el-scrollbar>
-      </el-aside>
-
       <!-- 右侧聊天区域 -->
       <el-container class="chat-container">
-        <el-main v-if="!currentCharacterId" class="empty-state">
-          <el-empty description="请选择一个角色开始对话" />
-        </el-main>
-
-        <template v-else>
+        <template v-if="currentCharacterId">
           <el-header height="70px" class="chat-header-container">
             <div class="chat-header">
               <div class="header-left">
-                <h3>{{ characterStore.currentCharacter?.name }}</h3>
+                <h3>AI 对话</h3>
                 <p class="header-hint">内容由 AI 生成，请注意甄别</p>
               </div>
               <el-button text @click="clearChat">
@@ -134,10 +94,10 @@
                 <el-input
                   v-model="inputMessage"
                   type="textarea"
-                  :rows="4"
-                  placeholder="输入消息... (Ctrl+Enter 发送)"
+                  :autosize="{ minRows: 1, maxRows: 5 }"
+                  placeholder="输入消息... (Enter 发送，Shift+Enter 换行)"
                   class="input-box"
-                  @keydown.enter.ctrl="sendMessage"
+                  @keydown.enter.exact.prevent="sendMessage"
                 />
                 <el-button
                   type="primary"
@@ -156,54 +116,31 @@
         </template>
       </el-container>
     </el-container>
-
-    <!-- 创建角色对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建角色" width="500px">
-      <el-form :model="createForm" label-width="80px">
-        <el-form-item label="角色名称">
-          <el-input v-model="createForm.name" maxlength="100" show-word-limit />
-        </el-form-item>
-        <el-form-item label="简介">
-          <el-input v-model="createForm.description" maxlength="500" show-word-limit />
-        </el-form-item>
-        <el-form-item label="背景故事">
-          <el-input
-            v-model="createForm.backgroundStory"
-            type="textarea"
-            :rows="4"
-            maxlength="2000"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="characterStore.loading" @click="createCharacter">
-          创建
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Delete, User, ChatDotRound, Promotion, Lightning, MagicStick, Picture, Close } from '@element-plus/icons-vue';
+import { Delete, User, ChatDotRound, Promotion, Lightning, MagicStick, Picture, Close } from '@element-plus/icons-vue';
 import type { UploadFile } from 'element-plus';
 import imageCompression from 'browser-image-compression';
 import MessageCard from '@/components/MessageCard.vue';
 import { useCharacterStore } from '@/stores/character';
 import { useChatStore } from '@/stores/chat';
 import { useDeviceStore } from '@/stores/device';
+import { useUserProfileStore } from '@/stores/userProfile';
+import { useConversationStore } from '@/stores/conversation';
 
 const characterStore = useCharacterStore();
 const chatStore = useChatStore();
 const deviceStore = useDeviceStore();
+const userProfileStore = useUserProfileStore();
+const conversationStore = useConversationStore();
 
 const currentCharacterId = ref('');
+const isCreatingNew = ref(false);
 const inputMessage = ref('');
-const showCreateDialog = ref(false);
 const scrollbarRef = ref();
 const selectedImage = ref<{ file: File; preview: string } | null>(null);
 const uploadRef = ref();
@@ -212,14 +149,30 @@ const abortController = ref<AbortController | null>(null);
 const selectRequestId = ref(0);
 let scrollPending = false;  // 滚动节流标志
 
-const createForm = ref({
-  name: '',
-  description: '',
-  backgroundStory: '',
-});
-
 onMounted(async () => {
+  // 获取角色列表
   await characterStore.fetchCharacters();
+
+  // 获取用户配置
+  await userProfileStore.fetchProfile();
+
+  // 自动选择默认模式
+  let defaultCharacterId = userProfileStore.profile?.defaultModeId;
+
+  // 如果没有配置默认模式，选择第一个预设模式
+  if (!defaultCharacterId && characterStore.characters.length > 0) {
+    const presetModes = characterStore.characters.filter(
+      char => char.metadata?.isPreset === true
+    );
+    if (presetModes.length > 0) {
+      defaultCharacterId = presetModes[0].id;
+    }
+  }
+
+  // 自动进入对话
+  if (defaultCharacterId) {
+    await selectCharacter(defaultCharacterId);
+  }
 
   // 获取可用模型列表
   try {
@@ -240,6 +193,38 @@ onMounted(async () => {
   }
 });
 
+// 监听对话选择变化，自动加载消息历史
+watch(
+  () => conversationStore.currentConversation,
+  async (newConversation, oldConversation) => {
+    // 优先处理清空会话的情况
+    if (newConversation === null) {
+      chatStore.messages = [];
+      chatStore.currentConversationId = undefined;
+      isCreatingNew.value = true;
+      return;
+    }
+
+    // 处理会话切换
+    if (newConversation && newConversation.id !== oldConversation?.id) {
+      // 取消正在进行的 SSE 请求
+      if (abortController.value) {
+        abortController.value.abort();
+        chatStore.streaming = false;
+      }
+
+      // 更新当前角色和对话ID
+      currentCharacterId.value = newConversation.characterId;
+      chatStore.currentConversationId = newConversation.id;
+
+      // 加载对话的消息历史
+      await chatStore.fetchHistory(newConversation.characterId, newConversation.id);
+      scrollToBottom();
+    }
+  },
+  { immediate: true }
+);
+
 const selectCharacter = async (id: string) => {
   // 生成新的请求ID
   const requestId = ++selectRequestId.value;
@@ -252,6 +237,7 @@ const selectCharacter = async (id: string) => {
 
   // 立即更新 UI，提供即时反馈
   currentCharacterId.value = id;
+  chatStore.currentConversationId = undefined;  // 重置对话ID
 
   try {
     // 并行执行两个请求以提高性能
@@ -273,36 +259,6 @@ const selectCharacter = async (id: string) => {
     if (requestId === selectRequestId.value) {
       ElMessage.error('切换角色失败');
     }
-  }
-};
-
-const deleteCharacter = async (id: string) => {
-  try {
-    await ElMessageBox.confirm('确认删除该角色？', '提示', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning',
-    });
-    await characterStore.deleteCharacter(id);
-    ElMessage.success('删除成功');
-  } catch {
-    // 用户取消
-  }
-};
-
-const createCharacter = async () => {
-  if (!createForm.value.name || !createForm.value.description || !createForm.value.backgroundStory) {
-    ElMessage.warning('请填写完整信息');
-    return;
-  }
-
-  try {
-    await characterStore.createCharacter(createForm.value);
-    ElMessage.success('创建成功');
-    showCreateDialog.value = false;
-    createForm.value = { name: '', description: '', backgroundStory: '' };
-  } catch (error) {
-    ElMessage.error('创建失败');
   }
 };
 
@@ -412,6 +368,7 @@ const sendMessage = async () => {
       body: JSON.stringify({
         characterId: currentCharacterId.value,
         content,
+        conversationId: isCreatingNew.value ? undefined : chatStore.currentConversationId,
         imageUrl,
         model: chatStore.aiModel
       }),
@@ -441,7 +398,20 @@ const sendMessage = async () => {
         const event = eventLine.substring(6).trim();
         const data = JSON.parse(dataLine.substring(5).trim());
 
-        if (event === 'token') {
+        if (event === 'start') {
+          // 接收conversation对象
+          if (data.conversation) {
+            chatStore.currentConversationId = data.conversation.id;
+            isCreatingNew.value = false;
+            // 直接添加到对话列表开头
+            const existingIndex = conversationStore.conversations.findIndex(
+              c => c.id === data.conversation.id
+            );
+            if (existingIndex === -1) {
+              conversationStore.conversations.unshift(data.conversation);
+            }
+          }
+        } else if (event === 'token') {
           assistantContent += data.content;
           chatStore.updateLastMessage(assistantContent);
           scrollToBottom();
@@ -467,7 +437,7 @@ const sendMessage = async () => {
 
 const clearChat = async () => {
   try {
-    await ElMessageBox.confirm('确认清空对话记录？', '提示', {
+    await ElMessageBox.confirm('确认清空当前对话？', '提示', {
       confirmButtonText: '确认',
       cancelButtonText: '取消',
       type: 'warning',
@@ -479,8 +449,20 @@ const clearChat = async () => {
       chatStore.streaming = false;
     }
 
-    await chatStore.clearHistory(currentCharacterId.value);
-    ElMessage.success('已清空对话');
+    await chatStore.clearHistory(currentCharacterId.value, chatStore.currentConversationId);
+
+    if (chatStore.currentConversationId) {
+      // 从列表中移除对话
+      conversationStore.conversations = conversationStore.conversations.filter(
+        c => c.id !== chatStore.currentConversationId
+      );
+      // 清空当前对话选择
+      conversationStore.currentConversation = null;
+      // 重置本地状态
+      chatStore.currentConversationId = undefined;
+    }
+
+    ElMessage.success('清空成功');
   } catch {
     // 用户取消
   }
@@ -520,80 +502,12 @@ onUnmounted(() => {
   background-color: #f5f7fa;
 }
 
-/* 左侧边栏样式 */
-.sidebar {
-  background-color: #ffffff;
-  border-right: 1px solid #e4e7ed;
-}
-
-.aside-header {
-  padding: 20px 16px;
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.create-btn {
-  width: 100%;
-  border-radius: 8px;
-  font-weight: 500;
-}
-
-.character-list {
-  padding: 12px;
-}
-
-.character-item {
-  padding: 12px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: transparent;
-}
-
-.character-item:hover {
-  background-color: #f5f7fa;
-}
-
-.character-item.active {
-  background-color: #ecf5ff;
-}
-
-.character-info {
-  flex: 1;
-  overflow: hidden;
-}
-
-.character-name {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  color: #303133;
-}
-
-.character-desc {
-  font-size: 12px;
-  color: #909399;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* 聊天区域样式 */
 .chat-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-}
-
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #ffffff;
 }
 
 .chat-header-container {
@@ -636,7 +550,7 @@ onUnmounted(() => {
 }
 
 .message-item {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   display: flex;
   gap: 12px;
 }
@@ -653,7 +567,7 @@ onUnmounted(() => {
   max-width: 70%;
   padding: 12px 16px;
   border-radius: 8px;
-  line-height: 1.6;
+  line-height: 1.3;
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 14px;

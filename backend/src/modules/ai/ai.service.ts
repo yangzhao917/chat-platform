@@ -11,6 +11,7 @@ export type ChatMessage = ChatCompletionMessageParam;
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly openai: OpenAI;
+  private readonly currentProvider: 'openai' | 'deepseek' | 'stepfun';
 
   // 图片Base64缓存
   private imageCache = new Map<string, { base64: string; timestamp: number }>();
@@ -29,6 +30,7 @@ export class AiService {
         baseURL: 'https://api.stepfun.com/v1',
         timeout: 60000, // 60秒超时
       });
+      this.currentProvider = 'stepfun';
       this.logger.log('StepFun API client initialized');
     } else if (deepseekKey && deepseekKey !== 'sk-e9bbd9f7bcd44caeb13eed77186ca5cc') {
       this.openai = new OpenAI({
@@ -36,6 +38,7 @@ export class AiService {
         baseURL: 'https://api.deepseek.com',
         timeout: 60000, // 60秒超时
       });
+      this.currentProvider = 'deepseek';
       this.logger.log('DeepSeek API client initialized');
     } else if (openaiKey && openaiKey !== 'your_openai_api_key_here') {
       this.openai = new OpenAI({
@@ -43,10 +46,18 @@ export class AiService {
         baseURL: 'https://api.openai.com/v1',
         timeout: 60000, // 60秒超时
       });
+      this.currentProvider = 'openai';
       this.logger.log('OpenAI API client initialized');
     } else {
       throw new Error('No AI API key configured (STEPFUN_API_KEY, DEEPSEEK_API_KEY, or OPENAI_API_KEY)');
     }
+  }
+
+  /**
+   * 获取当前使用的 API 提供商
+   */
+  getCurrentProvider(): 'openai' | 'deepseek' | 'stepfun' {
+    return this.currentProvider;
   }
 
   /**

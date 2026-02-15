@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Entity('messages')
 @Index('idx_messages_user_character', ['userId', 'characterId', 'createdAt'])
+@Index('idx_messages_conversation', ['conversationId', 'createdAt'])
 export class Message {
   @PrimaryColumn('varchar', { length: 36 })
   id: string;
@@ -19,6 +20,9 @@ export class Message {
 
   @Column('varchar', { length: 36 })
   characterId: string;
+
+  @Column('varchar', { length: 36, default: 'default' })
+  conversationId: string;
 
   @Column('varchar', { length: 20 })
   role: 'user' | 'assistant';

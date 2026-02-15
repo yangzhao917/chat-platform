@@ -1,12 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteRecordRaw } from 'vue-router';
+import ChatLayout from '@/views/ChatLayout.vue';
 import ChatPage from '@/views/ChatPage.vue';
 
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    name: 'chat',
-    component: ChatPage,
+    component: ChatLayout,
+    children: [
+      {
+        path: '',
+        name: 'chat',
+        component: ChatPage,
+      },
+    ],
   },
 ];
 

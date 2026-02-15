@@ -33,6 +33,11 @@ const hasImage = computed(() => {
 const renderedContent = computed(() => {
     if (!isTextMessage.value)
         return '';
+    // 流式输出时返回纯文本，避免高频Markdown解析
+    if (props.isStreaming) {
+        return props.content;
+    }
+    // 流式结束后才解析Markdown
     return marked(props.content);
 });
 const __VLS_ctx = {
@@ -44,6 +49,7 @@ const __VLS_ctx = {
 let __VLS_components;
 let __VLS_intrinsics;
 let __VLS_directives;
+/** @type {__VLS_StyleScopedClasses['message-text']} */ ;
 /** @type {__VLS_StyleScopedClasses['message-text']} */ ;
 /** @type {__VLS_StyleScopedClasses['message-text']} */ ;
 /** @type {__VLS_StyleScopedClasses['message-text']} */ ;
@@ -91,7 +97,14 @@ if (__VLS_ctx.hasImage) {
     }, ...__VLS_functionalComponentArgsRest(__VLS_1));
     /** @type {__VLS_StyleScopedClasses['image-content']} */ ;
 }
-if (__VLS_ctx.isTextMessage) {
+if (__VLS_ctx.isTextMessage && __VLS_ctx.isStreaming) {
+    __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
+        ...{ class: "message-text-plain" },
+    });
+    /** @type {__VLS_StyleScopedClasses['message-text-plain']} */ ;
+    (__VLS_ctx.content);
+}
+else if (__VLS_ctx.isTextMessage) {
     __VLS_asFunctionalElement1(__VLS_intrinsics.div, __VLS_intrinsics.div)({
         ...{ class: "message-text" },
     });
@@ -139,7 +152,7 @@ else if (__VLS_ctx.isCardMessage) {
         const __VLS_17 = __VLS_asFunctionalComponent1(__VLS_16, new __VLS_16({}));
         const __VLS_18 = __VLS_17({}, ...__VLS_functionalComponentArgsRest(__VLS_17));
         // @ts-ignore
-        [hasImage, metadata, metadata, metadata, metadata, isTextMessage, renderedContent, isCardMessage, content, content,];
+        [hasImage, metadata, metadata, metadata, metadata, isTextMessage, isTextMessage, isStreaming, content, content, content, renderedContent, isCardMessage,];
         var __VLS_13;
         __VLS_asFunctionalElement1(__VLS_intrinsics.span, __VLS_intrinsics.span)({});
     }

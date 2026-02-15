@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AiService } from '../ai/ai.service';
 
 export interface ModelInfo {
   value: string;
@@ -14,7 +15,10 @@ interface ProviderModels {
 
 @Injectable()
 export class AppConfigService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly aiService: AiService,
+  ) {}
 
   private readonly modelMapping = {
     openai: [
@@ -33,35 +37,15 @@ export class AppConfigService {
   };
 
   getAvailableModels(): ProviderModels[] {
-    const result: ProviderModels[] = [];
+    // 获取当前实际使用的 API 提供商
+    const currentProvider = this.aiService.getCurrentProvider();
 
-    // 检查OpenAI API密钥
-    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (openaiKey && openaiKey !== 'your_openai_api_key_here') {
-      result.push({
-        provider: 'openai',
-        models: this.modelMapping.openai,
-      });
-    }
-
-    // 检查DeepSeek API密钥
-    const deepseekKey = this.configService.get<string>('DEEPSEEK_API_KEY');
-    if (deepseekKey && deepseekKey !== 'your_deepseek_api_key_here') {
-      result.push({
-        provider: 'deepseek',
-        models: this.modelMapping.deepseek,
-      });
-    }
-
-    // 检查StepFun API密钥
-    const stepfunKey = this.configService.get<string>('STEPFUN_API_KEY');
-    if (stepfunKey && stepfunKey !== 'your_stepfun_api_key_here') {
-      result.push({
-        provider: 'stepfun',
-        models: this.modelMapping.stepfun,
-      });
-    }
-
-    return result;
+    // 只返回当前提供商的模型
+    return [
+      {
+        provider: currentProvider,
+        models: this.modelMapping[currentProvider],
+      },
+    ];
   }
 }

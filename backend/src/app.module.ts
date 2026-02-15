@@ -7,8 +7,12 @@ import { ChatModule } from './modules/chat/chat.module';
 import { AiModule } from './modules/ai/ai.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { ConfigModule as AppConfigModule } from './modules/config/config.module';
+import { ConversationModule } from './modules/conversation/conversation.module';
+import { UserProfileModule } from './modules/user-profile/user-profile.module';
 import { Character } from './modules/character/character.entity';
 import { Message } from './modules/message/message.entity';
+import { Conversation } from './modules/conversation/conversation.entity';
+import { UserProfile } from './modules/user-profile/user-profile.entity';
 
 @Module({
   imports: [
@@ -24,7 +28,7 @@ import { Message } from './modules/message/message.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_DATABASE'),
-        entities: [Character, Message],
+        entities: [Character, Message, Conversation, UserProfile],
         synchronize: true,
         charset: 'utf8mb4',
       }),
@@ -35,6 +39,8 @@ import { Message } from './modules/message/message.entity';
     AiModule,
     UploadModule,
     AppConfigModule,
+    ConversationModule,
+    UserProfileModule,
   ],
 })
 export class AppModule {}

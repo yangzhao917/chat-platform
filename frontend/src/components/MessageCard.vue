@@ -115,13 +115,13 @@ const renderedContent = computed(() => {
 .message-text {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.6;
+  line-height: 1.3;
 }
 
 .message-text-plain {
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.6;
+  line-height: 1.3;
 }
 
 /* Markdown样式 */
@@ -130,7 +130,7 @@ const renderedContent = computed(() => {
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .message-text :deep(code) {
@@ -152,7 +152,7 @@ const renderedContent = computed(() => {
 .message-text :deep(table) {
   border-collapse: collapse;
   width: 100%;
-  margin: 12px 0;
+  margin: 4px 0;
 }
 
 .message-text :deep(th),
@@ -170,13 +170,13 @@ const renderedContent = computed(() => {
 .message-text :deep(ul),
 .message-text :deep(ol) {
   padding-left: 24px;
-  margin: 8px 0;
+  margin: 2px 0;
 }
 
 .message-text :deep(blockquote) {
   border-left: 4px solid #ddd;
   padding-left: 12px;
-  margin: 8px 0;
+  margin: 2px 0;
   color: #666;
 }
 
@@ -186,12 +186,16 @@ const renderedContent = computed(() => {
 .message-text :deep(h4),
 .message-text :deep(h5),
 .message-text :deep(h6) {
-  margin: 16px 0 8px 0;
+  margin: 8px 0 2px 0;
   font-weight: 600;
 }
 
 .message-text :deep(p) {
-  margin: 8px 0;
+  margin: 0 0 8px 0;
+}
+
+.message-text :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .message-text :deep(a) {
